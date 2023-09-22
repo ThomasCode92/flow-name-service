@@ -40,4 +40,21 @@ pub contract Domains: NonFungibleToken {
             self.createdAt = createdAt
         }
     }
+
+    pub resource interface DomainPublic {
+        pub let id: UInt64
+        pub let name: String
+        pub let nameHash: String
+        pub let createdAt: UFix64
+
+        pub fun getBio(): String
+        pub fun getAddress(): Address?
+        pub fun getDomainName(): String
+        pub fun getInfo(): DomainInfo
+    }
+
+    pub resource interface DomainPrivate {
+        pub fun setBio(bio: String)
+        pub fun setAddress(addr: Address)
+    }
 }
