@@ -12,6 +12,9 @@ pub contract Domains: NonFungibleToken {
     pub event DomainBioChanged(nameHash: String, bio: String)
     pub event DomainAddressChanged(nameHash: String, address: Address)
 
+    pub event Withdraw(id: UInt64, from: Address?)
+    pub event Deposit(id: UInt64, to: Address?)
+
     init() {
         self.owners ={}
         self.expirationTimes = {}
@@ -139,6 +142,19 @@ pub contract Domains: NonFungibleToken {
     pub resource interface CollectionPrivate {
         access(account) fun mintDomain(name: String, nameHash: String, expiresAt: UFix64, receiver: Capability<&{NonFungibleToken.Receiver}>)
         pub fun borrowDomainPrivate(id: UInt64): &Domains.NFT
+    }
+
+    pub resource Collection: CollectionPublic, CollectionPrivate, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
+        pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
+
+        init() {
+            // Initialize as an empty resource
+            self.ownedNFTs <- {}
+        }
+
+        destroy() {
+            destroy self.ownedNFTs
+        }
     }
 
     // Checks if a domain is available for sale
