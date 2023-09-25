@@ -98,6 +98,38 @@ pub contract Domains: NonFungibleToken {
         pub fun getDomainName(): String {
             return self.name.concat(".fns")
         }
+
+        pub fun setBio(bio: String) {
+            pre {
+                Domains.isExpired(nameHash: self.nameHash) == false : "Domain is expired"
+            }
+
+            self.bio = bio
+            emit DomainBioChanged(nameHash: self.nameHash, bio: bio)
+        }
+
+        pub fun setAddress(addr: Address) {
+            pre {
+                Domains.isExpired(nameHash: self.nameHash) == false : "Domain is expired"
+            }
+
+            self.address = addr
+            emit DomainAddressChanged(nameHash: self.nameHash, address: addr)
+        }
+
+        pub fun getInfo(): DomainInfo {
+            let owner = Domains.owners[self.nameHash]!
+            return DomainInfo(
+                id: self.id,
+                owner: owner,
+                name: self.getDomainName(),
+                nameHash: self.nameHash,
+                expiresAt: Domains.expirationTimes[self.nameHash]!,
+                address: self.address,
+                bio: self.bio,
+                createdAt: self.createdAt
+            )
+        }
     }
 
     // Checks if a domain is available for sale
