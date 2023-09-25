@@ -6,7 +6,7 @@ import FlowToken from "./tokens/FlowToken.cdc"
 // to be used by flow-name-service
 pub contract Domains: NonFungibleToken {
 
-// Struct that represents information about an FNS domain
+    // Struct that represents information about an FNS domain
     pub struct DomainInfo {
 
         // Public Variables of the Struct
@@ -56,5 +56,36 @@ pub contract Domains: NonFungibleToken {
     pub resource interface DomainPrivate {
         pub fun setBio(bio: String)
         pub fun setAddress(addr: Address)
+    }
+
+    pub resource NFT: DomainPublic, DomainPrivate, NonFungibleToken.INFT {
+        pub let id: UInt64
+        pub let name: String
+        pub let nameHash: String
+        pub let createdAt: UFix64
+
+        access(self) var address: Address?
+        access(self) var bio: String
+
+        init(id: UInt64, name: String, nameHash: String) {
+            self.id = id
+            self.name = name
+            self.nameHash = nameHash
+            self.createdAt = getCurrentBlock().timestamp
+            self.address = nil
+            self.bio = ""
+        }
+
+        pub fun getBio(): String {
+            return self.bio
+        }
+
+        pub fun getAddress(): Address? {
+            return self.address
+        }
+
+        pub fun getDomainName(): String {
+            return self.name.concat(".fns")
+        }
     }
 }
