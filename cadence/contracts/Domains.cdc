@@ -131,6 +131,15 @@ pub contract Domains: NonFungibleToken {
             )
         }
     }
+    
+    pub resource interface CollectionPublic {
+        pub fun borrowDomain(id: UInt64): &{Domains.DomainPublic}
+    }
+
+    pub resource interface CollectionPrivate {
+        access(account) fun mintDomain(name: String, nameHash: String, expiresAt: UFix64, receiver: Capability<&{NonFungibleToken.Receiver}>)
+        pub fun borrowDomainPrivate(id: UInt64): &Domains.NFT
+    }
 
     // Checks if a domain is available for sale
     pub fun isAvailable(nameHash: String): Bool {
