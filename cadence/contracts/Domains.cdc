@@ -155,6 +155,44 @@ pub contract Domains: NonFungibleToken {
         destroy() {
             destroy self.ownedNFTs
         }
+
+        // NonFungibleToken.Provider
+        pub fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
+            let domain <- self.ownedNFTs.remove(key: withdrawID)
+                ?? panic("NFT not found in collection")
+            
+            emit Withdraw(id: domain.id, from: self.owner?.address)
+            return <- domain
+        }
+
+        // NonFungibleToken.Receiver
+        pub fun deposit(token: @NonFungibleToken.NFT) {
+            // Typecast the generic NFT resource as a Domains.NFT resource
+            let domain <- token as! @Domains.NFT
+            let id = domain.id
+            let nameHash = domain.nameHash
+    
+            if Domains.isExpired(nameHash: nameHash) {
+                panic("Domain is expired")
+            }
+    
+            Domains.updateOwner(nameHash: nameHash, address: self.owner?.address)
+    
+            let oldToken <- self.ownedNFTs[id] <- domain
+            emit Deposit(id: id, to: self.owner?.address)
+            
+            destroy oldToken
+        }
+
+        // NonFungibleToken.CollectionPublic
+        pub fun getIDs(): [UInt64] {    
+            return self.ownedNFTs.keys
+        }
+
+        pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT {
+            let token = (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
+            return token
+        }
     }
 
     // Checks if a domain is available for sale
@@ -194,7 +232,11 @@ pub contract Domains: NonFungibleToken {
     }
 
     // Update the owner of a domain
-    access(account) fun updateOwner(nameHash: String, address: Address) {
+    access(account) fun updateOwner(nameHash: String, address: Address?) {
+        if (address == nil) {
+            panic("No address provided")
+        }
+
         self.owners[nameHash] = address
     }
 
