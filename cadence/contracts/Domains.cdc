@@ -12,6 +12,10 @@ pub contract Domains: NonFungibleToken {
 
     pub var totalSupply: UInt64
 
+    pub let forbiddenChars: String
+    pub let minRentDuration: UFix64
+    pub let maxDomainLength: Int
+
     pub event DomainBioChanged(nameHash: String, bio: String)
     pub event DomainAddressChanged(nameHash: String, address: Address)
 
@@ -19,6 +23,7 @@ pub contract Domains: NonFungibleToken {
     pub event Deposit(id: UInt64, to: Address?)
 
     pub event DomainMinted(id: UInt64, name: String, nameHash: String, expiresAt: UFix64, receiver: Address)
+    pub event DomainRenewed(id: UInt64, name: String, nameHash: String, expiresAt: UFix64, receiver: Address)
 
     init() {
         self.owners ={}
@@ -243,6 +248,23 @@ pub contract Domains: NonFungibleToken {
             let token = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
             return token as! &Domains.NFT
         }
+    }
+
+    pub resource interface RegistrarPublic {
+        pub let minRentDuration: UFix64
+        pub let maxDomainLength: Int
+        pub let prices: {Int: UFix64}
+
+        pub fun renewDomain(domain: &Domains.NFT, duration: UFix64, feeTokens: @FungibleToken.Vault)
+        pub fun registerDomain(name: String, duration: UFix64, feeTokens: @FungibleToken.Vault, receiver: Capability<&{NonFungibleToken.Receiver}>)
+        pub fun getPrices(): {Int: UFix64}
+        pub fun getVaultBalance(): UFix64
+    }
+
+    pub resource interface RegistrarPrivate {
+        pub fun updateRentVault(vault: @FungibleToken.Vault)
+        pub fun withdrawVault(receiver: Capability<&{FungibleToken.Receiver}>, amount: UFix64)
+        pub fun setPrices(key: Int, val: UFix64)
     }
 
     // Checks if a domain is available for sale
