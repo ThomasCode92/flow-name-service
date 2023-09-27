@@ -389,6 +389,30 @@ pub contract Domains: NonFungibleToken {
         }
     }
 
+    pub fun createEmptyCollection(): @NonFungibleToken.Collection {
+        let collection <- create Collection()
+        return <- collection
+    }
+
+     pub fun getPrices(): {Int: UFix64} {
+        let cap = self.account.getCapability<&Domains.Registrar{Domains.RegistrarPublic}>(Domains.RegistrarPublicPath)
+        let collection = cap.borrow() ?? panic("Could not borrow collection")
+        return collection.getPrices()
+    }
+
+    pub fun getRentCost(name: String, duration: UFix64): UFix64 {
+        var len = name.length
+
+        if len > 10 {
+            len = 10
+        }
+
+        let price = self.getPrices()[len]
+
+        let rentCost = price! * duration
+        return rentCost
+    }
+
     // Checks if a domain is available for sale
     pub fun isAvailable(nameHash: String): Bool {
         if self.owners[nameHash] == nil {
