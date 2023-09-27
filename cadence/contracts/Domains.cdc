@@ -268,7 +268,6 @@ pub contract Domains: NonFungibleToken {
     }
 
     pub resource Registrar: RegistrarPublic, RegistrarPrivate {
-        // Variables defined in the interfaces
         pub let minRentDuration: UFix64
         pub let maxDomainLength: Int
         pub let prices: {Int: UFix64}
@@ -361,6 +360,32 @@ pub contract Domains: NonFungibleToken {
             let expirationTime = getCurrentBlock().timestamp + duration
 
             self.domainsCollection.borrow()!.mintDomain(name: name, nameHash: nameHash, expiresAt: expirationTime, receiver: receiver)
+        }
+
+        pub fun getPrices(): {Int: UFix64} {
+            return self.prices
+        }
+
+        pub fun getVaultBalance(): UFix64 {
+            return self.rentVault.balance
+        }
+
+        pub fun updateRentVault(vault: @FungibleToken.Vault) {  
+            pre {
+                self.rentVault.balance == 0.0 : "Withdraw balance from old vault before updating"
+            }
+
+            let oldVault <- self.rentVault <- vault
+            destroy oldVault
+        }
+
+        pub fun withdrawVault(receiver: Capability<&{FungibleToken.Receiver}>, amount: UFix64) {
+            let vault = receiver.borrow()!
+            vault.deposit(from: <- self.rentVault.withdraw(amount: amount))
+        }
+
+        pub fun setPrices(key: Int, val: UFix64) {
+            self.prices[key] = val
         }
     }
 
