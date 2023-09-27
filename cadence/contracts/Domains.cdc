@@ -147,7 +147,7 @@ pub contract Domains: NonFungibleToken {
             )
         }
     }
-    
+
     pub resource interface CollectionPublic {
         pub fun borrowDomain(id: UInt64): &{Domains.DomainPublic}
     }
@@ -266,6 +266,29 @@ pub contract Domains: NonFungibleToken {
         pub fun withdrawVault(receiver: Capability<&{FungibleToken.Receiver}>, amount: UFix64)
         pub fun setPrices(key: Int, val: UFix64)
     }
+
+    pub resource Registrar: RegistrarPublic, RegistrarPrivate {
+        // Variables defined in the interfaces
+        pub let minRentDuration: UFix64
+        pub let maxDomainLength: Int
+        pub let prices: {Int: UFix64}
+
+        priv var rentVault: @FungibleToken.Vault
+
+        access(account) var domainsCollection: Capability<&Domains.Collection>
+
+        init(vault: @FungibleToken.Vault, collection: Capability<&Domains.Collection>) {        
+            self.minRentDuration = UFix64(365 * 24 * 60 * 60) // This represents 1 year in seconds
+            self.maxDomainLength = 30
+            self.prices = {}
+
+            self.rentVault <- vault
+            self.domainsCollection = collection
+        }
+
+        destroy() {
+            destroy self.rentVault;
+        }
 
     // Checks if a domain is available for sale
     pub fun isAvailable(nameHash: String): Bool {
