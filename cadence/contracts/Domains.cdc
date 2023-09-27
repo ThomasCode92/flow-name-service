@@ -444,6 +444,24 @@ pub contract Domains: NonFungibleToken {
         return rentCost
     }
 
+    pub fun getVaultBalance(): UFix64 {
+        let cap = self.account.getCapability<&Domains.Registrar{Domains.RegistrarPublic}>(Domains.RegistrarPublicPath)
+        let registrar = cap.borrow() ?? panic("Could not borrow registrar public")
+        return registrar.getVaultBalance()
+    }
+
+    pub fun registerDomain(name: String, duration: UFix64, feeTokens: @FungibleToken.Vault, receiver: Capability<&{NonFungibleToken.Receiver}>) {
+        let cap = self.account.getCapability<&Domains.Registrar{Domains.RegistrarPublic}>(self.RegistrarPublicPath)
+        let registrar = cap.borrow() ?? panic("Could not borrow registrar")
+        registrar.registerDomain(name: name, duration: duration, feeTokens: <- feeTokens, receiver: receiver)
+    }
+
+    pub fun renewDomain(domain: &Domains.NFT, duration: UFix64, feeTokens: @FungibleToken.Vault) {
+        let cap = self.account.getCapability<&Domains.Registrar{Domains.RegistrarPublic}>(self.RegistrarPublicPath)
+        let registrar = cap.borrow() ?? panic("Could not borrow registrar")
+        registrar.renewDomain(domain: domain, duration: duration, feeTokens: <- feeTokens)
+    }
+
     // Checks if a domain is available for sale
     pub fun isAvailable(nameHash: String): Bool {
         if self.owners[nameHash] == nil {
