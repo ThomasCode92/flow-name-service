@@ -290,6 +290,80 @@ pub contract Domains: NonFungibleToken {
             destroy self.rentVault;
         }
 
+        pub fun renewDomain(domain: &Domains.NFT, duration: UFix64, feeTokens: @FungibleToken.Vault) {
+            var len = domain.name.length
+  
+            if len > 10 {
+                len = 10
+            }
+            
+            let price = self.getPrices()[len]
+
+            if duration < self.minRentDuration {
+                panic("Domain must be registered for at least the minimum duration: ".concat(self.minRentDuration.toString()))
+            }
+
+            if price == 0.0 || price == nil {
+                panic("Price has not been set for this length of domain")
+            }
+
+            let rentCost = price! * duration
+            let feeSent = feeTokens.balance
+
+            if feeSent < rentCost {
+                panic("You did not send enough FLOW tokens. Expected: ".concat(rentCost.toString()))
+            }
+
+            self.rentVault.deposit(from: <- feeTokens)
+
+            let newExpTime = Domains.getExpirationTime(nameHash: domain.nameHash)! + duration
+            Domains.updateExpirationTime(nameHash: domain.nameHash, expTime: newExpTime)
+
+            emit DomainRenewed(id: domain.id, name: domain.name, nameHash: domain.nameHash, expiresAt: newExpTime, receiver: domain.owner!.address)
+        }
+
+        pub fun registerDomain(name: String, duration: UFix64, feeTokens: @FungibleToken.Vault, receiver: Capability<&{NonFungibleToken.Receiver}>) {
+            pre {
+                name.length <= self.maxDomainLength : "Domain name is too long"
+            }
+
+            let nameHash = Domains.getDomainNameHash(name: name)
+
+            if Domains.isAvailable(nameHash: nameHash) == false {
+                panic("Domain is not available")
+            }
+
+            var len = name.length
+
+            if len > 10 {
+                len = 10
+            }
+
+            let price = self.getPrices()[len]
+
+            if duration < self.minRentDuration {
+                panic("Domain must be registered for at least the minimum duration: ".concat(self.minRentDuration.toString()))
+            }
+
+            if price == 0.0 || price == nil {
+                panic("Price has not been set for this length of domain")
+            }
+
+            let rentCost = price! * duration
+            let feeSent = feeTokens.balance
+
+            if feeSent < rentCost {
+                panic("You did not send enough FLOW tokens. Expected: ".concat(rentCost.toString()))
+            }
+
+            self.rentVault.deposit(from: <- feeTokens)
+
+            let expirationTime = getCurrentBlock().timestamp + duration
+
+            self.domainsCollection.borrow()!.mintDomain(name: name, nameHash: nameHash, expiresAt: expirationTime, receiver: receiver)
+        }
+    }
+
     // Checks if a domain is available for sale
     pub fun isAvailable(nameHash: String): Bool {
         if self.owners[nameHash] == nil {
@@ -346,5 +420,19 @@ pub contract Domains: NonFungibleToken {
 
     access(account) fun updateNameHashToID(nameHash: String, id: UInt64) {
         self.nameHashToIDs[nameHash] = id
+    }
+
+    pub fun getDomainNameHash(name: String): String {
+        let forbiddenCharsUTF8 = self.forbiddenChars.utf8
+        let nameUTF8 = name.utf8
+
+        for char in forbiddenCharsUTF8 {
+            if nameUTF8.contains(char) {
+                panic("Illegal domain name")
+            }
+        }
+
+        let nameHash = String.encodeHex(HashAlgorithm.SHA3_256.hash(nameUTF8))
+        return nameHash
     }
 }
