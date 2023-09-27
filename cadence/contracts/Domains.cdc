@@ -9,12 +9,17 @@ pub contract Domains: NonFungibleToken {
     pub let owners: {String: Address}
     pub let expirationTimes: {String: UFix64}
     pub let nameHashToIDs: {String: UInt64}
+    pub let forbiddenChars: String
+
+    pub let DomainsStoragePath: StoragePath
+    pub let DomainsPrivatePath: PrivatePath
+    pub let DomainsPublicPath: PublicPath
+
+    pub let RegistrarStoragePath: StoragePath
+    pub let RegistrarPrivatePath: PrivatePath
+    pub let RegistrarPublicPath: PublicPath
 
     pub var totalSupply: UInt64
-
-    pub let forbiddenChars: String
-    pub let minRentDuration: UFix64
-    pub let maxDomainLength: Int
 
     pub event DomainBioChanged(nameHash: String, bio: String)
     pub event DomainAddressChanged(nameHash: String, address: Address)
@@ -25,12 +30,38 @@ pub contract Domains: NonFungibleToken {
     pub event DomainMinted(id: UInt64, name: String, nameHash: String, expiresAt: UFix64, receiver: Address)
     pub event DomainRenewed(id: UInt64, name: String, nameHash: String, expiresAt: UFix64, receiver: Address)
 
+    pub event ContractInitialized()
+
     init() {
         self.owners ={}
         self.expirationTimes = {}
         self.nameHashToIDs = {}
 
         self.totalSupply = 0
+        self.forbiddenChars = "!@#$%^&*()<>? ./"
+
+        self.DomainsStoragePath = StoragePath(identifier: "flowNameServiceDomains") ?? panic("Could not set storage path")
+        self.DomainsPrivatePath = PrivatePath(identifier: "flowNameServiceDomains") ?? panic("Could not set private path")
+        self.DomainsPublicPath = PublicPath(identifier: "flowNameServiceDomains") ?? panic("Could not set public path")
+
+        self.RegistrarStoragePath = StoragePath(identifier: "flowNameServiceRegistrar") ?? panic("Could not set storage path")
+        self.RegistrarPrivatePath = PrivatePath(identifier: "flowNameServiceRegistrar") ?? panic("Could not set private path")
+        self.RegistrarPublicPath = PublicPath(identifier: "flowNameServiceRegistrar") ?? panic("Could not set public path")
+
+        self.account.save(<- self.createEmptyCollection(), to: Domains.DomainsStoragePath)
+        self.account.link<&Domains.Collection{NonFungibleToken.CollectionPublic, NonFungibleToken.Receiver, Domains.CollectionPublic}>(self.DomainsPublicPath, target: self.DomainsStoragePath)
+        self.account.link<&Domains.Collection>(self.DomainsPrivatePath, target: self.DomainsStoragePath)
+
+        let collectionCapability = self.account.getCapability<&Domains.Collection>(self.DomainsPrivatePath)
+        let vault <- FlowToken.createEmptyVault()
+        let registrar <- create Registrar(vault: <- vault, collection: collectionCapability)
+
+        self.account.save(<- registrar, to: self.RegistrarStoragePath)
+
+        self.account.link<&Domains.Registrar{Domains.RegistrarPublic}>(self.RegistrarPublicPath, target: self.RegistrarStoragePath)
+        self.account.link<&Domains.Registrar>(self.RegistrarPrivatePath, target: self.RegistrarStoragePath)
+
+        emit ContractInitialized()
     }
 
     // Struct that represents information about an FNS domain
