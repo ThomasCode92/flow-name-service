@@ -22,3 +22,36 @@ const INIT_ACCOUNT = `
     }
   }
 `;
+
+export async function registerDomain(name, duration) {
+  return fcl.mutate({
+    cadence: REGISTER_DOMAIN,
+    args: (arg, t) => [arg(name, t.String), arg(duration, t.UFix64)],
+    payer: fcl.authz,
+    proposer: fcl.authz,
+    authorizations: [fcl.authz],
+    limit: 1000,
+  });
+}
+
+const REGISTER_DOMAIN = `
+  import Domains from 0xDomains
+  import FungibleToken from 0xFungibleToken
+  import NonFungibleToken from 0xNonFungibleToken
+
+  transaction(name: String, duration: UFix64) {
+    let nftReceiverCap: Capability<&{NonFungibleToken.Receiver}>
+    let vault: @FungibleToken.Vault
+
+    prepare(account: AuthAccount) {
+      self.nftReceiverCap = account.getCapability<&{NonFungibleToken.Receiver}>(Domains.DomainsPublicPath)
+      let vaultRef = account.borrow<&FungibleToken.Vault>(from: /storage/flowTokenVault) ?? panic("Could not borrow Flow token vault reference")
+      let rentCost = Domains.getRentCost(name: name, duration: duration)
+      self.vault <- vaultRef.withdraw(amount: rentCost)
+    }
+
+    execute {
+      Domains.registerDomain(name: name, duration: duration, feeTokens: <- self.vault, receiver: self.nftReceiverCap)
+    }
+  }
+`;
